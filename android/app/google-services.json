@@ -1,0 +1,71 @@
+{
+  "project_info": {
+    "project_number": "672574350900",
+    "firebase_url": "https://ventour-mobile-443d1-default-rtdb.firebaseio.com",
+    "project_id": "ventour-mobile-443d1",
+    "storage_bucket": "ventour-mobile-443d1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:672574350900:android:676163361e80b15ebd4c61",
+        "android_client_info": {
+          "package_name": "id.co.ventour.www.twa"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "672574350900-hva9edfo4q2lu24afqluhf22ecdmb7i9.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "id.co.ventour.www.twa",
+            "certificate_hash": "f32591bdab003beeff1cc786f6669cc91a5d5790"
+          }
+        },
+        {
+          "client_id": "672574350900-rruvu70km8ienimm0bsjo6id4nl5cv5i.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "id.co.ventour.www.twa",
+            "certificate_hash": "5ea5ccfac6421965f08ddfb7b400299e4bbe0e30"
+          }
+        },
+        {
+          "client_id": "672574350900-uju4u40lelt135dsgpdmmrhmbflvfu1g.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "id.co.ventour.www.twa",
+            "certificate_hash": "9955620c66308a7f217e391ccdea06fee7193654"
+          }
+        },
+        {
+          "client_id": "672574350900-mgpmv86nd8ifcr7in04crdikqpd04dql.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDGoU9ENje2XE5exnXcWlxpGH-GnR1vSeU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "672574350900-mgpmv86nd8ifcr7in04crdikqpd04dql.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "672574350900-6a2gr34pq23ojsf5jms5n2er5kbvfu76.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.venom"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
