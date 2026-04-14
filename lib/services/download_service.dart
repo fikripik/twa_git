@@ -38,7 +38,7 @@ class DownloadService {
           : url.split('/').last;
 
       final downloadsDir = Directory("/storage/emulated/0/Download/Ventour");
-      await downloadsDir.create(recursive: true);   
+      await downloadsDir.create(recursive: true);
 
       final uniqueFileName = await _resolveDuplicateName(downloadsDir.path, fileName);
       final filePath = p.join(downloadsDir.path, uniqueFileName);
