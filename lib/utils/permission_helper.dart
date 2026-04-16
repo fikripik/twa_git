@@ -12,8 +12,9 @@ class PermissionHelper {
     // Request notification permission (Android 13+)
     if (sdkInt >= 33) {
       final notifStatus = await Permission.notification.request();
+      final storageStatus = await Permission.manageExternalStorage.request();
 
-      if (!notifStatus.isGranted) {
+      if (!notifStatus.isGranted || !storageStatus.isGranted) {
         debugPrint('Notification permission denied');
 
         // Show dialog reason notification is needed

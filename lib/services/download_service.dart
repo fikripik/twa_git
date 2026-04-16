@@ -37,10 +37,19 @@ class DownloadService {
           ? suggestedFilename!
           : url.split('/').last;
 
-      final downloadsDir = Directory("/storage/emulated/0/Download/Ventour");
-      await downloadsDir.create(recursive: true);
+      final baseDownloads = await getExternalStorageDirectories(
+        type: StorageDirectory.downloads,
+      ).then((dirs) => dirs?.first);
+      
+			if (baseDownloads == null) {
+				_showSnackBar(context, 'Tidak dapat mengakses folder Download');
+				return;
+			}
 
-      final uniqueFileName = await _resolveDuplicateName(downloadsDir.path, fileName);
+			final downloadsDir = Directory(p.join(baseDownloads.path, 'Ventour'));				
+			await downloadsDir.create(recursive: true);
+
+      final uniqueFileName = await _resolveDuplicateName(downloadsDir!.path, fileName);
       final filePath = p.join(downloadsDir.path, uniqueFileName);
       
       notificationId = await DownloadNotificationHelper.showDownloadStartNotification(uniqueFileName);
@@ -73,9 +82,9 @@ class DownloadService {
 
       if (response.statusCode == 200 && await File(filePath).exists()) {
           _scanMedia(filePath);
-          await SharePlus.instance.share(ShareParams(files:[XFile(filePath)], text: 'Download file'));
           await NotificationService.plugin.cancel(id: notificationId);
           await DownloadNotificationHelper.showDownloadCompleteNotification(notificationId, uniqueFileName, filePath);
+          await SharePlus.instance.share(ShareParams(files:[XFile(filePath)], text: 'Download file'));
           return;
       }
 
