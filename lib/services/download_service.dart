@@ -1,4 +1,5 @@
 import 'package:media_scanner/media_scanner.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import '../config/package_config.dart';
 import 'package:path/path.dart' as p;
 
@@ -46,7 +47,7 @@ class DownloadService {
 				return;
 			}
 
-			final downloadsDir = Directory(p.join(baseDownloads.path, 'Ventour'));				
+			final downloadsDir = Directory("/storage/emulated/0/Download/Ventour");	
 			await downloadsDir.create(recursive: true);
 
       final uniqueFileName = await _resolveDuplicateName(downloadsDir!.path, fileName);
@@ -54,12 +55,28 @@ class DownloadService {
       
       notificationId = await DownloadNotificationHelper.showDownloadStartNotification(uniqueFileName);
 
-      _showLoading(context);
+      showLoadingToast(context);
+
+      final cookieManager = CookieManager.instance();
+
+      final cookies = await cookieManager.getCookies(
+        url: WebUri(url),
+      );
+
+      final cookieString = cookies
+        .map((c) => "${c.name}=${c.value}")
+        .join("; ");
 
       final response = await dio.download(
         url,
         filePath,
-        options: Options(responseType: ResponseType.stream),
+        options: Options(
+          responseType: ResponseType.stream, 
+          headers: {
+            "Cookie": cookieString,
+          },
+        ),
+
         onReceiveProgress: (received, total) {
           if (total != -1) {
             final progress = (received / total * 100);
@@ -80,18 +97,43 @@ class DownloadService {
         },
       );  
 
-      if (response.statusCode == 200 && await File(filePath).exists()) {
-          _scanMedia(filePath);
-          await NotificationService.plugin.cancel(id: notificationId);
-          await DownloadNotificationHelper.showDownloadCompleteNotification(notificationId, uniqueFileName, filePath);
-          await SharePlus.instance.share(ShareParams(files:[XFile(filePath)], text: 'Download file'));
-          return;
-      }
+      final file = File(filePath);
+      if (response.statusCode == 200 && await file.exists()) {
+        final fileSize = await file.length();
 
+        if (fileSize == 0) {
+          throw Exception("File kosong");
+        }
+
+        await Future.delayed(const Duration(milliseconds: 500));
+
+        _scanMedia(filePath);
+
+        await NotificationService.plugin.cancel(id: notificationId);
+
+        await DownloadNotificationHelper.showDownloadCompleteNotification(
+          notificationId,
+          uniqueFileName,
+          filePath,
+        );
+
+        hideLoadingToast();
+        showFloatingToast(
+          context,
+          'Download Selesai',
+          isSuccess: true,
+        );
+        await Future.delayed(const Duration(milliseconds: 800));
+        showDownloadCompleteDialog(filePath);
+
+        return;
+      }
+        hideLoadingToast();
         await NotificationService.plugin.cancel(id: notificationId);
         await DownloadNotificationHelper.showDownloadErrorNotification(notificationId, uniqueFileName, 'Gagal menyimpan file');
       } catch (e) {
           debugPrint('File copy failed: $e');
+          hideLoadingToast();
           await NotificationService.plugin.cancel(id: notificationId);
           if (context.mounted) {_showSnackBar(context, 'Download gagal : $e');}
       }
@@ -293,6 +335,103 @@ class DownloadService {
       ),
     );
   }
+
+  static OverlayEntry? _loadingToast;
+  static void showLoadingToast(BuildContext context) {
+    final overlay = Overlay.of(context);
+    if (overlay == null) return;
+
+    _loadingToast?.remove(); // jaga2 kalau dobel
+
+    _loadingToast = OverlayEntry(
+      builder: (context) => Positioned(
+        bottom: MediaQuery.of(context).size.height * 0.15,
+        left: 20,
+        right: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    blurRadius: 10,
+                    color: Colors.black26,
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Text(
+                    "Downloading...",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(_loadingToast!);
+  }
+
+  static void showFloatingToast(
+    BuildContext context,
+    String message, {
+    bool isSuccess = false,
+  }) {
+    final overlay = Overlay.of(context);
+    if (overlay == null) return;
+
+    final overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        bottom: MediaQuery.of(context).size.height * 0.15,
+        left: 20,
+        right: 20,
+        child: Material(
+          color: Colors.transparent,
+          child: Center(
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSuccess ? Colors.green : Colors.black87,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    blurRadius: 10,
+                    color: Colors.black26,
+                  ),
+                ],
+              ),
+              child: Text(
+                message,
+                style: const TextStyle(color: Colors.white),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    overlay.insert(overlayEntry);
+
+    Future.delayed(const Duration(seconds: 2), () {
+      overlayEntry.remove();
+    });
+  }
+
+  static void hideLoadingToast() {
+    _loadingToast?.remove();
+    _loadingToast = null;
+  }
+
   
   static Future<void> _scanMedia(String tempPath) async {
     try {
