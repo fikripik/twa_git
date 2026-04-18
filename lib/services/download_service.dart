@@ -1,5 +1,6 @@
 import 'package:media_scanner/media_scanner.dart';
 import '../config/package_config.dart';
+import 'package:external_path/external_path.dart';
 import 'package:path/path.dart' as p;
 
 @pragma('vm:entry-point')
@@ -37,19 +38,12 @@ class DownloadService {
           ? suggestedFilename!
           : url.split('/').last;
 
-      final baseDownloads = await getExternalStorageDirectories(
-        type: StorageDirectory.downloads,
-      ).then((dirs) => dirs?.first);
-      
-			if (baseDownloads == null) {
-				_showSnackBar(context, 'Tidak dapat mengakses folder Download');
-				return;
-			}
+      final baseDownloads = await ExternalPath.getExternalStoragePublicDirectory(ExternalPath.DIRECTORY_DOWNLOAD);
 
-			final downloadsDir = Directory(p.join(baseDownloads.path, 'Ventour'));				
+			final downloadsDir = Directory(p.join(baseDownloads, 'Ventour'));				
 			await downloadsDir.create(recursive: true);
 
-      final uniqueFileName = await _resolveDuplicateName(downloadsDir!.path, fileName);
+      final uniqueFileName = await _resolveDuplicateName(downloadsDir.path, fileName);
       final filePath = p.join(downloadsDir.path, uniqueFileName);
       
       notificationId = await DownloadNotificationHelper.showDownloadStartNotification(uniqueFileName);
