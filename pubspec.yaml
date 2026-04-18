@@ -89,6 +89,7 @@ dependencies:
   zego_uikit_prebuilt_live_audio_room: 3.16.10
   zego_zim: 2.27.0
   flutter_bloc: ^9.1.1
+  external_path: ^2.2.0
 
 dev_dependencies:
   flutter_test:
