@@ -9,6 +9,9 @@ abstract class TrackState {
   final String? routeDuration;
   final bool isRouteMode;
   final Jamaah? focusedJamaah;
+  final Map<int, bool> jamaahOutsideRadius;
+  final bool isSupervisionActive; 
+
 
   TrackState({
     this.jamaahs = const [],
@@ -18,6 +21,8 @@ abstract class TrackState {
     this.routeDuration,
     this.isRouteMode = false,
     this.focusedJamaah,
+    this.jamaahOutsideRadius = const {},
+    this.isSupervisionActive = false,
   });
 }
 
@@ -32,6 +37,8 @@ class TrackLoading extends TrackState {
     super.routeDuration,
     super.isRouteMode,
     super.focusedJamaah,
+    super.jamaahOutsideRadius,
+    super.isSupervisionActive,
   });
 }
 
@@ -44,6 +51,8 @@ class TrackLoaded extends TrackState {
     super.routeDuration,
     super.isRouteMode,
     super.focusedJamaah,
+    super.jamaahOutsideRadius,
+    super.isSupervisionActive,
   });
 
   TrackLoaded copyWith({
@@ -54,7 +63,9 @@ class TrackLoaded extends TrackState {
     String? routeDuration,
     bool? isRouteMode,
     Jamaah? focusedJamaah,
-    bool clearRoute = false,
+    bool clearRoute = false, 
+    required bool isSupervisionActive, 
+    required Map<int, bool> jamaahOutsideRadius,
   }) {
     return TrackLoaded(
       jamaahs: jamaahs ?? this.jamaahs,
@@ -64,6 +75,8 @@ class TrackLoaded extends TrackState {
       routeDuration: clearRoute ? null : (routeDuration ?? this.routeDuration),
       isRouteMode: isRouteMode ?? this.isRouteMode,
       focusedJamaah: clearRoute ? null : (focusedJamaah ?? this.focusedJamaah),
+      jamaahOutsideRadius: jamaahOutsideRadius,
+      isSupervisionActive: isSupervisionActive,
     );
   }
 }
