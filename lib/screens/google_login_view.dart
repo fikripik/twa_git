@@ -1,5 +1,3 @@
-import 'package:path/path.dart';
-
 import '../config/package_config.dart';
 
 class GoogleLoginView extends StatelessWidget {
@@ -91,7 +89,7 @@ class GoogleLoginView extends StatelessWidget {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    "$roleLabel masuk menggunakan email google yang telah terdaftar di Ventour.",
+                    "$roleLabel masuk menggunakan email Google yang telah terdaftar di Ventour Mobile.",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: isDark ? Colors.grey[400] : Colors.grey,
@@ -102,7 +100,6 @@ class GoogleLoginView extends StatelessWidget {
                   InkWell(
                     onTap: () async {
                       final result = await _authService.signIn(type);
-                      debugPrint("Google Sign-In result: $result");
 
                       if (result != null && context.mounted) {
                         if (result['status_code'] == 400) {
@@ -115,35 +112,17 @@ class GoogleLoginView extends StatelessWidget {
                             ),
                           );
                         } else {
-                          final redirectUrl = result['redirect_url'] as String?;
-                          String? tokenFromUrl;
-                          
-                          if (redirectUrl != null) {
-                            try {
-                              final uri = Uri.parse(redirectUrl);
-                              tokenFromUrl = uri.queryParameters['token'];
-                              debugPrint("✅ Extracted token from URL: $tokenFromUrl");
-                            } catch (e) {
-                              debugPrint('Error parsing redirect_url: $e');
-                            }
-                          }
-
-                          // ✅ Use token from result OR extracted from URL
-                          final token = result['token'] ?? tokenFromUrl;
-
-                          if (token != null) {
+                          if (result['token'] != null) {
                             final storage = FlutterSecureStorage();
                             await storage.write(
                               key: 'auth_token',
-                              value: token,
+                              value: result['token'],
                             );
 
                             await storage.write(
                               key: 'auth_role',
                               value: type, // saat ini ada konsultan, affiliator
                             );
-
-                            debugPrint("Login berhasil, dengan role $type");
                           }
                           Navigator.pop(context, result['redirect_url']);
                         }

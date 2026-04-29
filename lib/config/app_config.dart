@@ -7,4 +7,3 @@ class AppConfig {
   static const String zegoAppSign =
       '290ae51ca7b2b53e658f529939106cab365a656d2caae385c0040d883f7079fd';
 }
-  

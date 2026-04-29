@@ -20,7 +20,6 @@ class CekAuth {
         body: {'token': token},
       );
 
-      debugPrint("Checking auth for role: $role with token: ${token.substring(0, 10)}...");
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
 
