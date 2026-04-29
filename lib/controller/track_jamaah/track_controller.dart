@@ -2,6 +2,7 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'dart:ui' as ui;
 import '../../config/package_config.dart';
 import 'package:http/http.dart' as http;
+import 'dart:math';
 
 class TrackController {
 	final int? idAgen;
@@ -188,4 +189,39 @@ class TrackController {
         throw Exception('Error fetching route info: $e');
       }
     }
+
+  double calculateDistance(LatLng point1, LatLng point2) {
+    const R = 6371; // Earth's radius in km
+    final lat1 = point1.latitude * pi / 180;
+    final lat2 = point2.latitude * pi / 180;
+    final deltaLat = (point2.latitude - point1.latitude) * pi / 180;
+    final deltaLng = (point2.longitude - point1.longitude) * pi / 180;
+
+    final a = sin(deltaLat / 2) * sin(deltaLat / 2) +
+              cos(lat1) * cos(lat2) * sin(deltaLng / 2) * sin(deltaLng / 2);
+    final c = 2 * atan2(sqrt(a), sqrt(1 - a));
+
+    return R * c * 1000; // Return in meters
+  }
+
+  Future<void> sendTourLeaderLocation({
+    required double latitude,
+    required double longitude,
+    required int idAgen
+  }) async {
+    final url = '${AppConfig.baseUrl}/api_flutter/update_tour_leader_location?id_agen=$idAgen&lat=$latitude&lng=$longitude';
+    
+    try {
+      debugPrint('Sending location to backend: $latitude, $longitude for idAgen: $idAgen');
+      final response = await http.post(Uri.parse(url));
+      debugPrint('Response: ${response.body}');
+  
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update location');
+      }
+    } catch (e) {
+      debugPrint('API Error: $e');
+      rethrow;
+    }
+  }
 }

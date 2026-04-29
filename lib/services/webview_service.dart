@@ -93,6 +93,8 @@ class WebviewService {
       .catch(e => console.log('❌ API error:', e));
     """;
 
+      debugPrint('Send location: ${pos.latitude}, ${pos.longitude}');
+
       await controller.evaluateJavascript(source: js);
     } catch (e) {}
   }

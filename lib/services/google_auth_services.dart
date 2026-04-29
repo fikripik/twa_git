@@ -29,6 +29,7 @@ class GoogleAuthService {
       Uri.parse('${AppConfig.baseUrl}$endpoint'),
       body: {'credential': idToken, 'from': 'flutter'},
     );
+    debugPrint("Google Sign-In Response: ${response.body}");
     return jsonDecode(response.body);
   }
 

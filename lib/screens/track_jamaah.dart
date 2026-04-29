@@ -1,5 +1,4 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import '../controller/track_jamaah/track_bloc.dart';
@@ -46,7 +45,7 @@ class MapTrackerPage extends StatefulWidget {
   State<MapTrackerPage> createState() => _MapTrackerPageState();
 }
 
-class _MapTrackerPageState extends State<MapTrackerPage> {
+class _MapTrackerPageState extends State<MapTrackerPage> with WidgetsBindingObserver{
   GoogleMapController? _mapController;
   StreamSubscription<Position>? _userLocationSub;
   
@@ -55,6 +54,7 @@ class _MapTrackerPageState extends State<MapTrackerPage> {
 
   final ValueNotifier<Jamaah?> _selectedJamaah = ValueNotifier(null);
   final ValueNotifier<CustomTravelMode> _selectedTravelMode = ValueNotifier(CustomTravelMode.driving);
+  StreamSubscription? _supervisionSubscription;
 
   final LatLng _center = const LatLng(-6.2, 106.816666);
   Marker? _userMarker;
@@ -67,14 +67,18 @@ class _MapTrackerPageState extends State<MapTrackerPage> {
     super.initState();
     _trackBloc = TrackBloc(TrackController(idAgen: widget.idAgen));
     _requestLocationPermission();
+    WidgetsBinding.instance.addObserver(this);
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchCtrl.dispose();
     _searchQuery.dispose();
     _selectedJamaah.dispose();
     _userLocationSub?.cancel();
+    _supervisionSubscription?.cancel();
+    _trackBloc.add(StopSupervisionEvent());
     _trackBloc.close();
     super.dispose();
   }
@@ -89,17 +93,28 @@ class _MapTrackerPageState extends State<MapTrackerPage> {
   }
 
   void _startLiveJamaahUpdate() {
-    final state = _trackBloc.state;
-    
-    if (state is TrackLoaded && state.isRouteMode && state.focusedJamaah != null) {
-      _trackBloc.add(FetchJamaahEvent(
-        travelMode: _selectedTravelMode.value,
-        jamaahId: state.focusedJamaah?.id.toString(),
-      ));
-    } else {
-      _trackBloc.add(FetchJamaahEvent());
-    }
+  final state = _trackBloc.state;
+  
+  if (state is TrackLoaded && state.isRouteMode && state.focusedJamaah != null) {
+    _trackBloc.add(FetchJamaahEvent(
+      travelMode: _selectedTravelMode.value,
+      jamaahId: state.focusedJamaah?.id.toString(),
+    ));
+  } else {
+    // ✅ Add FetchJamaahEvent and wait for response via listener
+    _trackBloc.add(FetchJamaahEvent());
+
+    // Listen for when FetchJamaahEvent completes (state becomes TrackLoaded)
+    _supervisionSubscription = _trackBloc.stream.listen((newState) {
+      if (newState is TrackLoaded && _userMarker != null) {
+        debugPrint('📦 Jamaah data loaded, starting supervision...');
+        _trackBloc.add(StartSupervisionEvent(tourLeaderLocation: _userMarker!.position));
+        debugPrint("Supervision started with tour leader location: ${_userMarker!.position.latitude}, ${_userMarker!.position.longitude}");
+        _supervisionSubscription?.cancel();
+      }
+    });
   }
+}
 
   void _requestLocationPermission() async {
     if (!await Geolocator.isLocationServiceEnabled()) {
@@ -149,8 +164,11 @@ class _MapTrackerPageState extends State<MapTrackerPage> {
       setState(() => _userMarker = marker);
       _trackBloc.add(UpdateUserMarkerEvent(marker));
 
-      // Update route if in route mode
       final state = _trackBloc.state;
+      _sendLocationToBackend(latLng);
+      debugPrint("Sent tour leader with id ${widget.idAgen} location to backend: ${latLng.latitude}, ${latLng.longitude}");
+      
+      // Update route if in route mode
       if (state is TrackLoaded && state.isRouteMode && state.focusedJamaah != null) {
         _trackBloc.add(DrawRouteEvent(
           jamaah: state.focusedJamaah!,
@@ -158,6 +176,8 @@ class _MapTrackerPageState extends State<MapTrackerPage> {
           fromLiveUpdate: true,
           travelMode: _selectedTravelMode.value,
         ));
+      } else if (state is TrackLoaded && state.isSupervisionActive) {
+        _trackBloc.add(CheckRadiusEvent(tourLeaderLocation: latLng));
       }
     });
   }
@@ -471,6 +491,18 @@ class _MapTrackerPageState extends State<MapTrackerPage> {
                         },
                       );
                     }).toSet(),
+                    circles: _userMarker != null 
+                    ? {
+                      Circle(
+                        circleId: const CircleId('supervision_radius'),
+                        center: _userMarker!.position,
+                        radius: TrackBloc.supervisionRadius,
+                        fillColor: Colors.blue.withValues(alpha: 0.1),
+                        strokeColor: Colors.blue.withValues(alpha: 0.4),
+                        strokeWidth: 2,
+                      ),
+                    }
+                    : {},
                     polylines: state is TrackLoaded ? state.polylines : {},
                     myLocationEnabled: true,
                     zoomControlsEnabled: false,
@@ -554,4 +586,16 @@ class _MapTrackerPageState extends State<MapTrackerPage> {
       ),
     );
   }
+	
+	Future<void> _sendLocationToBackend(LatLng location) async {
+		try {
+			await _trackBloc.controller.sendTourLeaderLocation(
+				latitude: location.latitude,
+				longitude: location.longitude,	
+				idAgen: widget.idAgen!,
+			);
+		} catch (e) {
+			debugPrint('Failed to send tour leader location: $e');
+		}
+	}
 }
