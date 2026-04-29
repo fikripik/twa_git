@@ -154,6 +154,8 @@ class _WebviewScreenState extends State<WebviewScreen>
         _checkMandatoryPermissions();
         sendLocationOnce();
         debugPrint('sendLocationOnce called from didChangeAppLifecycleState.resumed');
+      } else if (state == AppLifecycleState.paused) {
+        JamaahSupervisionService().stopSupervision();
       }
     }
 
@@ -162,7 +164,7 @@ class _WebviewScreenState extends State<WebviewScreen>
     WidgetsBinding.instance.removeObserver(this);
     _webViewController.dispose();
     _showWaktuSholat.dispose();
-    // JamaahSupervisionService().stopSupervision();
+    JamaahSupervisionService().stopSupervision();
     super.dispose();
   }
 
