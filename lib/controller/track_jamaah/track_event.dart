@@ -65,17 +65,6 @@ class CancelRouteEvent extends TrackEvent {}
 
 class UpdateUserMarkerEvent extends TrackEvent {
   final Marker userMarker;
+
   UpdateUserMarkerEvent(this.userMarker);
 }
-
-class StartSupervisionEvent extends TrackEvent {
-  final LatLng tourLeaderLocation;
-  StartSupervisionEvent({required this.tourLeaderLocation});
-}
-
-class CheckRadiusEvent extends TrackEvent {
-  final LatLng tourLeaderLocation;
-  CheckRadiusEvent({required this.tourLeaderLocation});
-}
-
-class StopSupervisionEvent extends TrackEvent {}

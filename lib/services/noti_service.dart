@@ -11,18 +11,15 @@ class NotificationService {
   static final navigatorKey = GlobalKey<NavigatorState>();
 
   static int _notificationId = 0;
-  static int _radiusNotificationId = 9000;  // ✅ Separate counter for radius notifications
 
   static const channelAdzanSubuh = 'vm_adzan_global';
   static const channelAdzanLain = 'vm_adzan_lain';
   static const channelGlobal = 'vm_global';
-  static const channelRadius = 'radius_alerts';
-  static const channelDownload = 'download_channel';
 
   static Future<void> initFCM() async {
     await Firebase.initializeApp();
     FirebaseMessaging.onBackgroundMessage(_backgroundHandler);
-  }  
+  }
 
   static Future<void> initLocalNotification() async {
     const DarwinInitializationSettings iosSettings =
@@ -117,16 +114,6 @@ class NotificationService {
         showBadge: false,
       ),
     );
-
-    await android?.createNotificationChannel(
-      const AndroidNotificationChannel(
-        channelRadius,
-        'Radius Alerts',
-        importance: Importance.max,
-        sound: RawResourceAndroidNotificationSound('notification'),
-      ),
-    );
-  
   }
 
   static Future<void> handleTerminatedLaunch() async {
@@ -320,60 +307,30 @@ class NotificationService {
     }
   }
 
-  static AndroidNotificationDetails _buildAndroidDownloadDetails({
-    required String channelId,
-    required String channelName,
-    int maxProgress = 100,
-    int progress = 0,
-    bool showProgress = false,
-    bool indeterminate = false,
-    bool ongoing = false,
-    bool autoCancel = true,
-    String? icon,
-  }) {
-    return AndroidNotificationDetails(
-      channelId,
-      channelName,
-      channelDescription: 'Download notifications',
-      importance: showProgress ? Importance.low : Importance.high,
-      priority: showProgress ? Priority.low : Priority.high,
-      showProgress: showProgress,
-      maxProgress: maxProgress,
-      progress: progress,
-      indeterminate: indeterminate,
-      ongoing: ongoing,
-      autoCancel: autoCancel,
-      icon: icon,
-    );
-  }
-
-  // Helper method for iOS download notification details
-  static DarwinNotificationDetails _buildIOSDownloadDetails() {
-    return const DarwinNotificationDetails(
-      presentAlert: true,
-      presentBadge: true,
-      presentSound: false,
-    );
-  }
-
-  // Simplified download functions
   static Future<int> showDownloadStartNotification(String fileName) async {
+    const androidDetails = AndroidNotificationDetails(
+      'download_channel',
+      'Downloads',
+      channelDescription: 'Download notifications',
+      importance: Importance.low,
+      priority: Priority.low,
+      showProgress: true,
+      maxProgress: 100,
+      progress: 0,
+      indeterminate: false,
+      ongoing: true,
+      autoCancel: false,
+    );
+
+    const notificationDetails = NotificationDetails(android: androidDetails);
+
     final id = DateTime.now().millisecondsSinceEpoch ~/ 1000;
 
     await _plugin.show(
       id: id,
       title: 'Downloading',
       body: fileName,
-      notificationDetails: NotificationDetails(
-        android: _buildAndroidDownloadDetails(
-          channelId: channelDownload,
-          channelName: 'Downloads',
-          showProgress: true,
-          ongoing: true,
-          autoCancel: false,
-        ),
-        iOS: _buildIOSDownloadDetails(),
-      ),
+      notificationDetails: notificationDetails,
     );
 
     return id;
@@ -384,46 +341,55 @@ class NotificationService {
     String fileName,
     int progress,
   ) {
+    final androidDetails = AndroidNotificationDetails(
+      'download_channel',
+      'Downloads',
+      channelDescription: 'Download notifications',
+      importance: Importance.low,
+      priority: Priority.low,
+      showProgress: true,
+      maxProgress: 100,
+      progress: progress,
+      indeterminate: false,
+      ongoing: true,
+      autoCancel: false,
+    );
+
+    final notificationDetails = NotificationDetails(android: androidDetails);
+
     _plugin.show(
       id: id,
       title: 'Downloading $fileName',
       body: '$progress%',
-      notificationDetails: NotificationDetails(
-        android: _buildAndroidDownloadDetails(
-          channelId: channelDownload,
-          channelName: 'Downloads',
-          showProgress: true,
-          progress: progress,
-          ongoing: true,
-          autoCancel: false,
-        ),
-        iOS: _buildIOSDownloadDetails(),
-      ),
+      notificationDetails: notificationDetails,
     );
   }
 
-  static void updateIndeterminateProgressNotification(
-    int id,
-    String fileName,
-    int bytesReceived,
-  ) {
+    static void updateIndeterminateProgressNotification(
+      int id,
+      String fileName,
+      int bytesReceived,
+    ) {
     final kb = (bytesReceived / 1024).toStringAsFixed(0);
-
+    final androidDetails = AndroidNotificationDetails(
+      'download_channel',
+      'Downloads',
+      channelDescription: 'Download notifications',
+      importance: Importance.low,
+      priority: Priority.low,
+      showProgress: true,
+      maxProgress: 0,
+      progress: 0,
+      indeterminate: true,
+      ongoing: true,
+      autoCancel: false,
+    );
+  
     _plugin.show(
       id: id,
       title: 'Downloading $fileName',
       body: '$kb KB downloaded...',
-      notificationDetails: NotificationDetails(
-        android: _buildAndroidDownloadDetails(
-          channelId: channelDownload,
-          channelName: 'Downloads',
-          showProgress: true,
-          indeterminate: true,
-          ongoing: true,
-          autoCancel: false,
-        ),
-        iOS: _buildIOSDownloadDetails(),
-      ),
+      notificationDetails: NotificationDetails(android: androidDetails),
     );
   }
 
@@ -432,23 +398,36 @@ class NotificationService {
     String fileName,
     String filePath,
   ) async {
+    const androidDetails = AndroidNotificationDetails(
+      'download_channel',
+      'Downloads',
+      channelDescription: 'Download notifications',
+      importance: Importance.high,
+      priority: Priority.high,
+      showProgress: false,
+      ongoing: false,
+      autoCancel: true,
+      actions: [
+        AndroidNotificationAction(
+          'open_file',
+          'Open',
+          showsUserInterface: true,
+        ),
+        AndroidNotificationAction(
+          'share_file',
+          'Share',
+          showsUserInterface: true,
+        ),
+      ],
+    );
+
+    const notificationDetails = NotificationDetails(android: androidDetails);
+
     await _plugin.show(
       id: id,
       title: 'Download Complete',
-      body: '$fileName downloaded successfully',
-      notificationDetails: NotificationDetails(
-        android: _buildAndroidDownloadDetails(
-          channelId: channelDownload,
-          channelName: 'Downloads',
-          autoCancel: true,
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          sound: 'notification.aiff',
-        ),
-      ),
+      body: '$fileName has been downloaded successfully',
+      notificationDetails: notificationDetails,
       payload: filePath,
     );
   }
@@ -458,86 +437,25 @@ class NotificationService {
     String fileName,
     String error,
   ) async {
+    const androidDetails = AndroidNotificationDetails(
+      'download_channel',
+      'Downloads',
+      channelDescription: 'Download notifications',
+      importance: Importance.high,
+      priority: Priority.high,
+      showProgress: false,
+      ongoing: false,
+      autoCancel: true,
+      icon: 'ic_error',
+    );
+
+    const notificationDetails = NotificationDetails(android: androidDetails);
+
     await _plugin.show(
       id: id,
       title: 'Download Failed',
       body: '$fileName: $error',
-      notificationDetails: NotificationDetails(
-        android: _buildAndroidDownloadDetails(
-          channelId: channelDownload,
-          channelName: 'Downloads',
-          icon: 'ic_error',
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          sound: 'notification.aiff',
-        ),
-      ),
-    );
-  }
-
-  static Future<void> showRadiusViolation({
-    required int jamaahId,
-    required String jamaahName,
-    required String userRole,
-  }) async {
-    final (title, body) = ('Anda Keluar Zona', '$jamaahName berada di luar kawasan');
-    
-    debugPrint('✅ Showing notification ID: $notificationId for $jamaahName');
-
-    await _plugin.show(
-      id: _radiusNotificationId++,
-      title: title,
-      body: body,
-      notificationDetails: NotificationDetails(
-        android: AndroidNotificationDetails(
-          channelRadius,
-          'Radius Alerts',
-          importance: Importance.max,
-          priority: Priority.high,
-          sound: RawResourceAndroidNotificationSound('notification'),
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          sound: 'notification.aiff',
-        ),
-      ),
-    );
-  }
-
-    static Future<void> showRadiusViolationSummary({
-    required int count,
-    required String userRole,
-  }) async {
-    final (title, body) = ('Jamaah Keluar Zona', '$count jamaah telah meninggalkan zona pengawasan');
-    
-    debugPrint('✅ Showing SUMMARY notification ID: $_radiusNotificationId');
-  
-    await _plugin.show(
-      id: _radiusNotificationId++,
-      title: title,
-      body: body,
-      notificationDetails:
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          channelRadius,
-          'Radius Alerts',
-          channelDescription: 'Alerts when jamaah leave supervision radius',
-          importance: Importance.high,
-          priority: Priority.high,
-          sound: RawResourceAndroidNotificationSound('notification'),
-        ),
-        iOS: DarwinNotificationDetails(
-          presentAlert: true,
-          presentBadge: true,
-          presentSound: true,
-          sound: 'notification.aiff',
-        ),
-      ),
+      notificationDetails: notificationDetails,
     );
   }
 }

@@ -1,7 +1,6 @@
 import 'package:bloc/bloc.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-// import 'package:path/path.dart';
 import '../../config/package_config.dart';
 import 'track_event.dart';
 import 'track_state.dart';
@@ -9,10 +8,6 @@ import 'track_controller.dart';
 
 class TrackBloc extends Bloc<TrackEvent, TrackState> {
   final TrackController controller;
-  static const double supervisionRadius = 200; // meters
-  Timer? _supervisionTimer;
-  String? _userRole;
-  bool _userRoleInitialized = false;
 
   TrackBloc(this.controller) : super(TrackInitial()) {
     on<FetchJamaahEvent>(_onFetchJamaah);
@@ -20,19 +15,6 @@ class TrackBloc extends Bloc<TrackEvent, TrackState> {
     on<DrawRouteEvent>(_onDrawRoute);
     on<CancelRouteEvent>(_onCancelRoute);
     on<UpdateUserMarkerEvent>(_onUpdateUserMarker);
-    on<StartSupervisionEvent>(_onStartSupervision);
-    on<CheckRadiusEvent>(_onCheckRadius);
-    on<StopSupervisionEvent>(_onStopSupervision);
-  }
-
-  Future<void> _initializeUserRole() async {
-    debugPrint('Initializing user role for supervision...');
-    if (_userRole == null) {
-      final storage = FlutterSecureStorage();
-      _userRole = await storage.read(key: 'auth_role') ?? 'konsultan';
-      _userRoleInitialized  = true;
-      debugPrint('✅ UserRole initialized: $_userRole');
-    }
   }
 
   Future<void> _onFetchJamaah(
@@ -53,8 +35,6 @@ class TrackBloc extends Bloc<TrackEvent, TrackState> {
           routeDuration: previousState.routeDuration,
           isRouteMode: previousState.isRouteMode,
           focusedJamaah: previousState.focusedJamaah,
-          jamaahOutsideRadius: previousState.jamaahOutsideRadius,
-          isSupervisionActive: previousState.isSupervisionActive,
         ));
       }
 
@@ -66,7 +46,7 @@ class TrackBloc extends Bloc<TrackEvent, TrackState> {
 				return;
 			}
 
-			emit(previousState.copyWith(jamaahs: jamaahs, isSupervisionActive: true, jamaahOutsideRadius: {}));
+			emit(previousState.copyWith(jamaahs: jamaahs));
 
 			// If we were in route mode, check if focused Jamaah's location changed
       if (previousState.isRouteMode && previousState.focusedJamaah != null) {
@@ -83,7 +63,7 @@ class TrackBloc extends Bloc<TrackEvent, TrackState> {
       		// Check auto-redraw conditions ONCE
           if (userMarker != null && 
               controller.hasValidLocation(updatedFocusedJamaah)) {
-						emit(previousState.copyWith(focusedJamaah: updatedFocusedJamaah, isSupervisionActive: true, jamaahOutsideRadius: {}));
+						emit(previousState.copyWith(focusedJamaah: updatedFocusedJamaah));
 
             // Trigger auto-redraw with new jamaah location
             add(DrawRouteEvent(
@@ -123,7 +103,7 @@ class TrackBloc extends Bloc<TrackEvent, TrackState> {
         (jamaah) {}, // onTap handled in UI
       );
 
-      emit(currentState.copyWith(markers: markers, isSupervisionActive: currentState.isSupervisionActive, jamaahOutsideRadius: currentState.jamaahOutsideRadius));
+      emit(currentState.copyWith(markers: markers));
     } catch (e) {
       emit(TrackError(
         'Failed to update markers: $e',
@@ -174,6 +154,13 @@ class TrackBloc extends Bloc<TrackEvent, TrackState> {
         final routeDistance = (event.travelMode == CustomTravelMode.walking)
           ? routeInfo['distance']
           : routeInfo['distanceMeters'];
+	
+				// final focusedMarker = currentState.markers.firstWhere(
+				// 	(m) =>
+				// 			m.position.latitude == event.jamaah.lat &&
+				// 			m.position.longitude == event.jamaah.lng,
+				// 	orElse: () => const Marker(markerId: MarkerId('destination')),
+				// );
 
 				final focusedMarkerIcon = await controller.createMarkerWithName(event.jamaah.name);
 				final focusedMarker = Marker(
@@ -193,9 +180,7 @@ class TrackBloc extends Bloc<TrackEvent, TrackState> {
 					routeDuration: routeInfo['duration'],
 					isRouteMode: true,
 					focusedJamaah: event.jamaah,
-					markers: {focusedMarker, ...userMarker}, 
-          isSupervisionActive: currentState.isSupervisionActive, 
-          jamaahOutsideRadius: currentState.jamaahOutsideRadius,
+					markers: {focusedMarker, ...userMarker},
 				));
 			} catch (e) {
 				debugPrint('Route error: $e');
@@ -340,7 +325,7 @@ class TrackBloc extends Bloc<TrackEvent, TrackState> {
       null,
       (jamaah) {}, // onTap handled in UI
     );
-    emit(currentState.copyWith(clearRoute: true, isRouteMode: false, markers: restoredMarkers, isSupervisionActive: currentState.isSupervisionActive, jamaahOutsideRadius: currentState.jamaahOutsideRadius));
+    emit(currentState.copyWith(clearRoute: true, isRouteMode: false, markers: restoredMarkers));
   }
 
   Future<void> _onUpdateUserMarker(
@@ -354,103 +339,6 @@ class TrackBloc extends Bloc<TrackEvent, TrackState> {
     updatedMarkers.removeWhere((m) => m.markerId.value == 'user');
     updatedMarkers.add(event.userMarker);
 
-    emit(currentState.copyWith(markers: updatedMarkers, isSupervisionActive: currentState.isSupervisionActive, jamaahOutsideRadius: currentState.jamaahOutsideRadius));
-  }
-
-    Future<void> _onStartSupervision(
-      StartSupervisionEvent event, Emitter<TrackState> emit) async {
-    if (state is! TrackLoaded) return;
-
-    await _initializeUserRole();
-    
-    final currentState = state as TrackLoaded;
-    
-    if (currentState.jamaahs.isEmpty) {
-      debugPrint('No jamaahs loaded yet, deferring supervision start...');
-      return;
-    }
-    emit(currentState.copyWith(isSupervisionActive: true, jamaahOutsideRadius: {}));
-    
-    add(CheckRadiusEvent(tourLeaderLocation: event.tourLeaderLocation));
-    
-    // Start periodic checks every 10 seconds
-    _supervisionTimer?.cancel();
-    _supervisionTimer = Timer.periodic(Duration(seconds: 30), (_) {
-      debugPrint("Timer fired - checking radius from tour leader location: ${event.tourLeaderLocation}");
-      add(CheckRadiusEvent(tourLeaderLocation: event.tourLeaderLocation));
-    });
-  }
-
-  Future<void> _onCheckRadius(
-      CheckRadiusEvent event, Emitter<TrackState> emit) async {
-    if (state is! TrackLoaded) return;
-    
-    final currentState = state as TrackLoaded;
-    final Map<int, bool> newOutsideStatus = {};
-    final List<Jamaah> newlyOutside = []; // Collect newly outside jamaah
-    
-    if (currentState.jamaahs.isEmpty) {
-      debugPrint('No Jamaah data available for radius check.');
-      return;
-    }
-  
-    for (final jamaah in currentState.jamaahs) {
-      final jamaahLocation = LatLng(jamaah.lat, jamaah.lng);
-      final distance = controller.calculateDistance(
-        event.tourLeaderLocation,
-        jamaahLocation,
-      );
-      
-      final isOutside = distance > supervisionRadius;
-      newOutsideStatus[jamaah.id] = isOutside;
-  
-      final wasOutside = currentState.jamaahOutsideRadius[jamaah.id] ?? false;
-      
-      // Only track those who JUST went outside (state changed from inside to outside)
-      if (isOutside && !wasOutside) {
-        newlyOutside.add(jamaah);
-      }
-    }
-    
-    if (newlyOutside.isNotEmpty) {
-      await sendRadiusViolationNotifications(newlyOutside);
-    }
-    
-    emit(currentState.copyWith(jamaahOutsideRadius: newOutsideStatus, isSupervisionActive: currentState.isSupervisionActive));
-  }
-  
-  // ✅ Modified to accept list and send ONE notification
-  Future<void> sendRadiusViolationNotifications(List<Jamaah> jamaahs) async {
-    if (jamaahs.isEmpty) return;
-    
-    try {
-      debugPrint('🚨 ${jamaahs.length} jamaah outside - sending count notification');
-      await NotificationService.showRadiusViolationSummary(
-        count: jamaahs.length,
-        userRole: _userRole!,
-      );
-    } catch (e) {
-      debugPrint('❌ Notification error: $e');
-    }
-  }
-
-  Future<void> _onStopSupervision(
-      StopSupervisionEvent event, Emitter<TrackState> emit) async {
-    _supervisionTimer?.cancel();
-    _userRole = null;
-    _userRoleInitialized = false;
-    if (state is! TrackLoaded) return;
-    
-    final currentState = state as TrackLoaded;
-    emit(currentState.copyWith(
-      isSupervisionActive: false,
-      jamaahOutsideRadius: {},
-    ));
-  }
-
-  @override
-  Future<void> close() {
-    _supervisionTimer?.cancel();
-    return super.close();
+    emit(currentState.copyWith(markers: updatedMarkers));
   }
 }

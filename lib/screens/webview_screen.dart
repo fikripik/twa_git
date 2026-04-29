@@ -1,9 +1,3 @@
-// import 'package:twa/controller/track_jamaah/track_controller.dart';
-// import 'package:twa/services/jamaah_supervision_service.dart';
-
-import 'package:twa/controller/track_jamaah/track_controller.dart';
-import 'package:twa/services/jamaah_supervision_service.dart';
-
 import '../config/package_config.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -162,7 +156,6 @@ class _WebviewScreenState extends State<WebviewScreen>
     WidgetsBinding.instance.removeObserver(this);
     _webViewController.dispose();
     _showWaktuSholat.dispose();
-    // JamaahSupervisionService().stopSupervision();
     super.dispose();
   }
 
@@ -293,7 +286,6 @@ class _WebviewScreenState extends State<WebviewScreen>
                       controller.addJavaScriptHandler(
                         handlerName: 'flutterShare',
                         callback: (args) async {
-                          debugPrint('Triggered flutterShare handler with args: $args');
                           if (args.isNotEmpty) {
                             await _webViewController.handleShareMessage(
                               args[0].toString(),
@@ -302,30 +294,10 @@ class _WebviewScreenState extends State<WebviewScreen>
                         },
                       );
 
-                      controller.addJavaScriptHandler(
-                        handlerName: 'jamaahIdentity',
-                        callback: (args) async {
-                          debugPrint('Triggered jamaahIdentity handler with args: $args');
-                          if (args.isEmpty) return;
-                          try {
-                            final payload = jsonDecode(args.first as String) as Map<String, dynamic>;
-                            final idJamaah = payload['id_jamaah']?.toString();
-                            if (idJamaah == null || idJamaah.isEmpty) return;
-                      
-                            final tlLoc = await JamaahSupervisionService().fetchTourLeaderLocation(idJamaah);
-                            await JamaahSupervisionService().startSupervision(tourLeaderLocation: tlLoc);
-                            debugPrint("Started supervision for jamaah ID $idJamaah with tour leader location: ${tlLoc.latitude}, ${tlLoc.longitude}");
-                          } catch (e) {
-                            debugPrint('jamaahIdentity handler error: $e');
-                          }
-                        },
-                      );
-
                       if (widget.isLoggedIn == true) {
                         final storage = const FlutterSecureStorage();
                         final token = await storage.read(key: 'auth_token');
                         final role = await storage.read(key: 'auth_role');
-                        debugPrint("Auth token found: ${token != null} with role: $role");
 
                         if (token != null) {
                           await controller.postUrl(
