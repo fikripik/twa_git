@@ -27,6 +27,9 @@ class _WebviewScreenState extends State<WebviewScreen>
   InAppWebViewController? _controller;
   DateTime? _lastBackPressTime;
 
+  late AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSubscription;
+
   bool _locationDialogShown = false;
   bool _prayerScheduled = false;
   late String userAgentString;
@@ -39,6 +42,8 @@ class _WebviewScreenState extends State<WebviewScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    initDeepLinks();
 
     _pullToRefreshController = PullToRefreshController(
       settings: PullToRefreshSettings(color: Colors.yellow),
@@ -62,6 +67,46 @@ class _WebviewScreenState extends State<WebviewScreen>
       sendLocationOnce();
       debugPrint('sendLocationOnce called from addPostFrameCallback');
     });
+  }
+
+  Future<void> initDeepLinks() async {
+    _appLinks = AppLinks();
+
+    try {
+      // ketika app mati lalu dibuka dari link
+      final initialUri = await _appLinks.getInitialLink();
+
+      if (initialUri != null) {
+        print("Initial Deep Link: $initialUri");
+
+        if (_controller != null) {
+          await _controller!.loadUrl(
+            urlRequest: URLRequest(
+              url: WebUri(initialUri.toString()),
+            ),
+          );
+        } else {
+          pendingUrl = initialUri.toString();
+        }
+      }
+
+      // ketika app sedang hidup/background
+      _linkSubscription = _appLinks.uriLinkStream.listen((Uri uri) async {
+        print("Incoming Deep Link: $uri");
+
+        if (_controller != null) {
+          await _controller!.loadUrl(
+            urlRequest: URLRequest(
+              url: WebUri(uri.toString()),
+            ),
+          );
+        } else {
+          pendingUrl = uri.toString();
+        }
+      });
+    } catch (e) {
+      print("Deep link error: $e");
+    }
   }
 
   void _stopRefreshingSafely() {
@@ -159,6 +204,7 @@ class _WebviewScreenState extends State<WebviewScreen>
 
   @override
   void dispose() {
+    _linkSubscription?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _webViewController.dispose();
     _showWaktuSholat.dispose();

@@ -16,7 +16,7 @@ publish_to: "none" # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 14.2.5+33
+version: 14.2.5+38
 
 environment:
   sdk: ^3.10.1
@@ -71,10 +71,11 @@ dependencies:
   firebase_auth: ^6.1.4
   image_gallery_saver_plus: ^4.0.1
   flutter_secure_storage: ^10.0.0
+  app_links: ^7.0.0
 
   # Download Handling storage (state management)
   shared_preferences: ^2.5.4
-  saf: ^1.0.4
+  chunked_downloader: ^1.0.0
 
   # Splash screen purpose
   lottie: ^3.3.2
@@ -89,7 +90,6 @@ dependencies:
   zego_uikit_prebuilt_live_audio_room: 3.16.10
   zego_zim: 2.27.0
   flutter_bloc: ^9.1.1
-  external_path: ^2.2.0
 
 dev_dependencies:
   flutter_test:
