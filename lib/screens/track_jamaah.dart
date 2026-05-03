@@ -277,7 +277,7 @@ class _MapTrackerPageState extends State<MapTrackerPage> with WidgetsBindingObse
                     }
                   : null,
               icon: const Icon(Icons.directions),
-              label: const Text('Show Route'),
+              label: const Text('Tunjukkan Rute'),
             ),
           ],
         ),
