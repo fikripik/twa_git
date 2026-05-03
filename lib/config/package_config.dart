@@ -33,6 +33,7 @@ export 'package:google_sign_in/google_sign_in.dart';
 export 'package:firebase_core/firebase_core.dart';
 export 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 export 'package:flutter_secure_storage/flutter_secure_storage.dart';
+export 'package:app_links/app_links.dart';
 
 //service
 export '../services/location_service.dart';
