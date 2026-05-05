@@ -76,6 +76,7 @@ dependencies:
   # Download Handling storage (state management)
   shared_preferences: ^2.5.4
   chunked_downloader: ^1.0.0
+  html_to_pdf: ^0.8.1
 
   # Splash screen purpose
   lottie: ^3.3.2

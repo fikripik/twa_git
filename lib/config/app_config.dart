@@ -1,5 +1,5 @@
 class AppConfig {
-  static const String baseUrl = "https://venom.ventour.co.id/appdev";
+  static const String baseUrl = "https://venom.ventour.co.id/appdev"; //Rubah ke appdev kalo mau coba yaa bang
   static const String cookieUrl = "https://venom.ventour.co.id";
   // GoogleMap API key diapus karena kurang bagus naro key di config frontend, dipindah ke PHP backend
 
